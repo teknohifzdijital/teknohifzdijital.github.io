@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Teknohıfz Dijital Forum (Profesyonel)</title>
+    <title>Teknohıfz Dijital Forum (Hata Ayıklama)</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Inter Font -->
@@ -66,7 +66,7 @@
                 <form id="newTopicForm" class="space-y-4">
                     <div>
                         <label for="userName" class="block text-sm font-medium text-gray-400 mb-1">Adınız (Google ile giriş yaparsanız otomatik dolar):</label>
-                        <input type="text" id="userName" required placeholder="Örn: Dijital Analist"
+                        <input type="text" id="userName" required placeholder="Örn: Dijital Analist (Anonim)"
                                class="w-full p-3 rounded-lg bg-gray-800 border border-gray-700 text-white placeholder-gray-500 focus:ring-green-500 focus:border-green-500 transition duration-150 disabled:opacity-50">
                     </div>
                     <div>
@@ -96,16 +96,16 @@
 
     <!-- Firebase Imports -->
     <script type="module">
-        // Mandatory Firebase imports for Firestore functionality
+        // Zorunlu Firebase importları
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { 
             getAuth, 
             signInAnonymously, 
             signInWithCustomToken, 
             onAuthStateChanged,
-            GoogleAuthProvider, // Google Auth için yeni import
-            signInWithPopup,    // Google Auth için yeni import
-            signOut             // Çıkış için yeni import
+            GoogleAuthProvider,
+            signInWithPopup,
+            signOut 
         } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { 
             getFirestore, 
@@ -117,10 +117,11 @@
         } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
 
-        // Set log level for debugging Firebase operations
+        // ** KRİTİK HATA AYIKLAMA (DEBUGGING) **
+        // Tüm Firebase loglarını konsola yazar. Hata nedenini anlamak için tarayıcınızdaki konsolu kontrol edin!
         setLogLevel('Debug');
 
-        // Global variables provided by the Canvas environment (Mandatory to use these)
+        // Canvas Ortamı tarafından sağlanan zorunlu global değişkenler
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
         const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
@@ -129,10 +130,10 @@
         let userId = null;
         let isAuthReady = false;
 
-        // Path for public/shared data storage
+        // Herkesin erişebileceği genel koleksiyon yolu
         const TOPICS_COLLECTION_PATH = `/artifacts/${appId}/public/data/forum_topics`;
 
-        // UI Elements
+        // UI Elementleri (kısaltıldı)
         const newTopicForm = document.getElementById('newTopicForm');
         const userNameInput = document.getElementById('userName');
         const topicContentInput = document.getElementById('topicContent');
@@ -140,17 +141,12 @@
         const loadingMessage = document.getElementById('loadingMessage');
         const messageBox = document.getElementById('messageBox');
         const userIdDisplay = document.getElementById('userIdDisplay');
-        const submitButton = document.getElementById('submitButton');
-        
-        // New Auth UI Elements
         const authStatus = document.getElementById('authStatus');
         const googleSignInButton = document.getElementById('googleSignInButton');
         const signOutButton = document.getElementById('signOutButton');
+        const submitButton = document.getElementById('submitButton');
 
 
-        /**
-         * Shows temporary messages in the message box.
-         */
         function showMessageBox(message, type = 'success') {
             messageBox.textContent = message;
             messageBox.classList.remove('hidden', 'text-green-400', 'text-red-400');
@@ -162,15 +158,9 @@
             setTimeout(() => messageBox.classList.add('hidden'), 5000);
         }
 
-        /**
-         * Converts a Firestore Timestamp or a Date string into a readable format.
-         * @param {object|string} timestamp - The timestamp object or ISO string.
-         * @returns {string} Formatted date and time.
-         */
         function formatTimestamp(timestamp) {
             if (!timestamp) return 'Şimdi';
             let date;
-
             if (timestamp.toDate) {
                 date = timestamp.toDate();
             } else if (typeof timestamp === 'string' || typeof timestamp === 'number') {
@@ -178,7 +168,6 @@
             } else {
                 return 'Bilinmiyor';
             }
-
             return date.toLocaleString('tr-TR', { 
                 year: 'numeric', 
                 month: 'short', 
@@ -188,42 +177,6 @@
             });
         }
 
-        /**
-         * Subscribes to real-time updates from Firestore.
-         */
-        function subscribeToTopics() {
-            if (!db || !isAuthReady) {
-                console.warn("Firestore veya kimlik doğrulama hazır değil.");
-                return;
-            }
-
-            const q = query(collection(db, TOPICS_COLLECTION_PATH));
-
-            const unsubscribe = onSnapshot(q, (snapshot) => {
-                const topics = [];
-                snapshot.forEach((doc) => {
-                    topics.push({ id: doc.id, ...doc.data() });
-                });
-
-                // Sort topics client-side (newest first)
-                topics.sort((a, b) => {
-                    const timeA = a.timestamp?.toDate ? a.timestamp.toDate().getTime() : new Date(0).getTime();
-                    const timeB = b.timestamp?.toDate ? b.timestamp.toDate().getTime() : new Date(0).getTime();
-                    return timeB - timeA; 
-                });
-
-                renderTopics(topics);
-            }, (error) => {
-                console.error("Konuları dinleme hatası: ", error);
-                showMessageBox('Konular yüklenirken bir hata oluştu.', 'error');
-            });
-            
-            return unsubscribe; 
-        }
-
-        /**
-         * Renders the topics list to the UI. (No change)
-         */
         function renderTopics(topics) {
             topicsContainer.innerHTML = '';
             loadingMessage.classList.add('hidden');
@@ -236,7 +189,6 @@
             topics.forEach(topic => {
                 const topicElement = document.createElement('div');
                 topicElement.className = 'p-5 bg-gray-800 rounded-lg shadow-md border border-gray-700 hover:border-[#38a169] transition duration-150';
-                
                 const formattedTime = formatTimestamp(topic.timestamp);
 
                 topicElement.innerHTML = `
@@ -255,29 +207,49 @@
         }
 
         /**
-         * Handles Google Sign-in using a popup.
+         * Firestore'dan gerçek zamanlı güncellemeleri dinler.
          */
+        function subscribeToTopics() {
+            if (!db || !isAuthReady) return;
+
+            const q = query(collection(db, TOPICS_COLLECTION_PATH));
+
+            const unsubscribe = onSnapshot(q, (snapshot) => {
+                const topics = [];
+                snapshot.forEach((doc) => {
+                    topics.push({ id: doc.id, ...doc.data() });
+                });
+
+                topics.sort((a, b) => {
+                    const timeA = a.timestamp?.toDate ? a.timestamp.toDate().getTime() : new Date(0).getTime();
+                    const timeB = b.timestamp?.toDate ? b.timestamp.toDate().getTime() : new Date(0).getTime();
+                    return timeB - timeA; 
+                });
+
+                renderTopics(topics);
+            }, (error) => {
+                // Güvenlik kuralı hatası veya ağ hatası burada yakalanır.
+                console.error("KRİTİK HATA: Konuları dinleme hatası (Güvenlik Kuralı Kontrolü Gerekli!): ", error);
+                showMessageBox('Veritabanı bağlantısı kesildi veya güvenlik kuralları erişimi engelliyor.', 'error');
+            });
+            
+            return unsubscribe; 
+        }
+
         async function signInWithGoogle() {
             try {
                 const provider = new GoogleAuthProvider();
                 await signInWithPopup(auth, provider);
-                showMessageBox('Google ile başarılı bir şekilde giriş yaptınız!', 'success');
-                // Auth state listener handles UI update
             } catch (error) {
                 console.error("Google Sign-in failed: ", error);
                 showMessageBox(`Google ile giriş yapılamadı: ${error.message}`, 'error');
             }
         }
 
-        /**
-         * Handles user sign-out.
-         */
         async function handleSignOut() {
             try {
                 await signOut(auth);
-                // Sign out will trigger onAuthStateChanged with a null user.
-                // We immediately sign in anonymously to keep the session alive 
-                // as required by the environment's security rules.
+                // Çıkış yapıldıktan hemen sonra tekrar anonim olarak giriş yapılır (Canvas kuralı).
                 await signInAnonymously(auth); 
                 showMessageBox('Başarıyla çıkış yaptınız ve anonim olarak giriş yapıldı.', 'success');
             } catch (error) {
@@ -287,9 +259,6 @@
         }
 
 
-        /**
-         * Handles form submission and adds a new topic to Firestore.
-         */
         async function addNewTopic(event) {
             event.preventDefault();
 
@@ -302,16 +271,12 @@
             submitButton.textContent = 'Yayınlanıyor...';
             messageBox.classList.add('hidden');
 
-            let name;
-            // Get current user details
             const currentUser = auth.currentUser;
+            let name;
 
-            // Determine the name to use based on the authentication status
             if (currentUser && !currentUser.isAnonymous) {
-                // Use official name/email if logged in with Google/Email
                 name = currentUser.displayName || currentUser.email || 'Kimliği Doğrulanmış Kullanıcı';
             } else {
-                // Use input value if anonymous
                 name = userNameInput.value.trim() || 'Anonim';
             }
             
@@ -325,26 +290,25 @@
             }
 
             try {
-                // Add the new topic document to the public collection
+                // Veritabanına yazma denemesi yapılır.
                 await addDoc(collection(db, TOPICS_COLLECTION_PATH), {
                     name: name,
                     topic: topic,
-                    timestamp: serverTimestamp(), // Use server timestamp for consistency
+                    timestamp: serverTimestamp(),
                     userId: userId 
                 });
 
-                // Clear input and display success
                 topicContentInput.value = '';
                 if (currentUser.isAnonymous) {
-                    // Only save last entered name if anonymous
                     localStorage.setItem('lastUserName', userNameInput.value.trim()); 
                 }
                 
                 showMessageBox('Konu başarıyla yayınlandı!', 'success');
 
             } catch (error) {
-                console.error("Error adding new topic: ", error);
-                showMessageBox('Konu yayınlanırken bir sorun oluştu: ' + error.message, 'error');
+                // Yazma hatası (PERMISSION DENIED vb.) burada yakalanır.
+                console.error("KRİTİK HATA: Konu eklenirken hata (Güvenlik Kuralı İhlali Olabilir!): ", error);
+                showMessageBox('Konu yayınlanırken bir sorun oluştu. Güvenlik kurallarınızı kontrol edin.', 'error');
             } finally {
                 submitButton.disabled = false;
                 submitButton.textContent = 'Yayınla (Gerçek Zamanlı Kayıt)';
@@ -352,87 +316,87 @@
         }
 
         /**
-         * Initializes Firebase and handles user authentication.
+         * Firebase'i başlatır ve kimlik doğrulamayı yönetir.
          */
         async function initializeFirebase() {
             try {
                 if (!app) {
+                    // Yapılandırma boşsa hata ver
+                    if (Object.keys(firebaseConfig).length === 0) {
+                        showMessageBox("Firebase yapılandırması eksik. Lütfen Canvas ortamınızın doğru yapılandırıldığından emin olun.", 'error');
+                        return;
+                    }
                     app = initializeApp(firebaseConfig);
                     db = getFirestore(app);
                     auth = getAuth(app);
                 }
 
-                // Load last used username for anonymous users
+                // Anonim kullanıcılar için son kullanılan adı yükle
                 const lastUserName = localStorage.getItem('lastUserName');
                 if (lastUserName) {
                     userNameInput.value = lastUserName;
                 }
 
-                // Mandatory initial sign-in logic (Anonymous or Custom Token)
+                // Zorunlu başlangıç kimlik doğrulaması (Anonim veya Custom Token)
                 if (initialAuthToken) {
                     await signInWithCustomToken(auth, initialAuthToken);
                 } else {
                     await signInAnonymously(auth);
                 }
                 
-                // Set up authentication state listener
+                // Kimlik doğrulama durumu dinleyicisi
                 onAuthStateChanged(auth, (user) => {
                     isAuthReady = true;
                     if (user) {
                         userId = user.uid;
                         
-                        // Update UI based on Auth status
+                        // Hata Ayıklama Kaydı: Oturum durumunu konsola yazar.
+                        console.log(`[DEBUG] Oturum Başarılı. UID: ${user.uid}, Anonim mi: ${user.isAnonymous}`);
+                        
+                        // UI güncellemeleri
                         if (user.isAnonymous) {
-                            // ANONYMOUS STATE
                             authStatus.textContent = 'Anonim (Misafir)';
                             authStatus.classList.remove('text-green-400');
                             authStatus.classList.add('text-red-400');
-                            userIdDisplay.textContent = user.uid;
-                            googleSignInButton.classList.remove('hidden');
-                            signOutButton.classList.add('hidden');
                             userNameInput.disabled = false;
                             userNameInput.placeholder = "Örn: Dijital Analist (Anonim)";
                         } else {
-                            // LOGGED IN STATE (Google/Email)
                             const displayName = user.displayName || user.email;
                             authStatus.textContent = displayName;
                             authStatus.classList.remove('text-red-400');
                             authStatus.classList.add('text-green-400');
-                            userIdDisplay.textContent = user.uid;
-                            googleSignInButton.classList.add('hidden');
-                            signOutButton.classList.remove('hidden');
-                            
-                            // Lock username input and use official name
                             userNameInput.value = displayName;
                             userNameInput.disabled = true; 
                         }
+                        
+                        userIdDisplay.textContent = user.uid;
+                        googleSignInButton.classList.toggle('hidden', !user.isAnonymous);
+                        signOutButton.classList.toggle('hidden', user.isAnonymous);
 
                         subscribeToTopics();
                     } else {
-                        // NO USER STATE (After explicit sign out, before anon re-sign-in)
-                        userId = null;
+                        userId = 'Oturum Yok';
                         userIdDisplay.textContent = 'Oturum Yok';
                         authStatus.textContent = 'Oturum Açın';
                         authStatus.classList.add('text-red-400');
                         googleSignInButton.classList.remove('hidden');
                         signOutButton.classList.add('hidden');
-                        
-                        renderTopics([]);
+                        renderTopics([]); // Veri yokken boş listeyi göster
                     }
                 });
 
-                // Add event listeners for new buttons
+                // Olay dinleyicileri
                 googleSignInButton.addEventListener('click', signInWithGoogle);
                 signOutButton.addEventListener('click', handleSignOut);
                 newTopicForm.addEventListener('submit', addNewTopic);
 
             } catch (error) {
-                console.error("Firebase initialization or auth error: ", error);
-                showMessageBox('Uygulama başlatılırken kritik bir hata oluştu.', 'error');
+                console.error("KRİTİK HATA: Firebase Başlatma Hatası: ", error);
+                showMessageBox('Uygulama başlatılırken kritik bir hata oluştu. Konsolu kontrol edin.', 'error');
             }
         }
         
-        // Start the application
+        // Uygulamayı başlat
         initializeFirebase();
     </script>
 </body>
